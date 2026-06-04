@@ -13,6 +13,14 @@ import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+/**
+ * ViewModel for the News screen.
+ *
+ * Manages the UI state for the list of articles, search history, and loading states.
+ * It interacts with the [NewsRepository] to fetch data from the Event Registry API.
+ *
+ * @param application The application context, used for managing search history.
+ */
 class NewsViewModel(application: Application) : AndroidViewModel(application) {
     private val historyManager = SearchHistoryManager(application)
     private val _articles = MutableStateFlow<List<Article>>(emptyList())

@@ -5,6 +5,14 @@ import com.a3solution.theshortnews.data.model.Article
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
+/**
+ * Repository class that abstracts the data source for news articles.
+ *
+ * It provides methods to fetch top articles and article details from the [NewsApiService].
+ * Results are returned as [Flow] objects to handle asynchronous data streams.
+ *
+ * @property apiService The Retrofit service used for network requests.
+ */
 class NewsRepository(private val apiService: NewsApiService) {
     fun getTopArticles(keyword: String? = null): Flow<List<Article>> = flow {
         try {

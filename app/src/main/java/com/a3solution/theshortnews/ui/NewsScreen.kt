@@ -21,7 +21,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.viewmodel.NewsViewModel
 
@@ -201,8 +203,11 @@ fun NewsItem(article: Article, onClick: () -> Unit) {
         Column {
             article.image?.let { imageUrl ->
                 AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = article.title,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp),
