@@ -22,34 +22,28 @@ class NewsRepository(
     private val articleDao: ArticleDao,
     private val networkUtils: NetworkUtils
 ) {
-    fun getTopArticles(keyword: String? = null): Flow<List<Article>> = flow {
-        // First, emit cached data from DB
-        // We use emitAll on a map to keep it reactive if we want, 
-        // but since we might be doing a one-time fetch here, let's just emit current and then refresh.
-        
-        // However, the user wants: "check if internet conectivity not available then show offline support data from db or cache and when connect then show latest data and store for offline and show it"
-        
-        // Let's emit what's in DB first (non-reactive for a moment, or just use emitAll)
-        // If we want it reactive, we should probably return articleDao.getAllArticles().map { ... }
-        // and trigger the network fetch separately.
-        
-        // Let's try this:
+    fun getTopArticles(keyword: String? = null, page: Int = 1): Flow<List<Article>> = flow {
         if (networkUtils.isNetworkAvailable()) {
             try {
                 val response = apiService.getTopArticles(
                     apiKey = NewsApiService.API_KEY,
-                    keyword = keyword
+                    keyword = keyword,
+                    page = page
                 )
                 val articles = response.articles?.results ?: emptyList()
                 if (articles.isNotEmpty()) {
-                    articleDao.refreshArticles(articles.mapNotNull { it.toEntity() })
+                    if (page == 1) {
+                        articleDao.refreshArticles(articles.mapNotNull { it.toEntity() })
+                    } else {
+                        articleDao.insertArticles(articles.mapNotNull { it.toEntity() })
+                    }
                 }
             } catch (e: Exception) {
-                // Ignore network errors, fallback to DB will happen below
+                // Ignore network errors
             }
         }
         
-        // Emit from DB (this will emit the updated data if network fetch was successful)
+        // Emit from DB
         emitAll(articleDao.getAllArticles(keyword).map { entities ->
             entities.map { it.toDomain() }
         })

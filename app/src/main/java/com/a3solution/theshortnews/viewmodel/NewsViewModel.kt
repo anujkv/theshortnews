@@ -22,9 +22,9 @@ import retrofit2.converter.gson.GsonConverterFactory
  * It interacts with the [NewsRepository] to fetch data from the Event Registry API.
  */
 class NewsViewModel(
-    application: Application,
-    private val repository: NewsRepository = createDefaultRepository(application)
+    application: Application
 ) : AndroidViewModel(application) {
+    private val repository: NewsRepository = createDefaultRepository(application)
     private val historyManager = SearchHistoryManager(application)
     private val _articles = MutableStateFlow<List<Article>>(emptyList())
     val articles: StateFlow<List<Article>> = _articles
@@ -40,6 +40,11 @@ class NewsViewModel(
 
     private val _selectedArticle = MutableStateFlow<Article?>(null)
     val selectedArticle: StateFlow<Article?> = _selectedArticle
+
+    private var currentPage = 1
+    private var canLoadMore = true
+    private var currentQuery: String? = null
+    private var fetchJob: kotlinx.coroutines.Job? = null
 
     init {
         initialLoad()
@@ -60,24 +65,19 @@ class NewsViewModel(
     }
 
     private fun initialLoad() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            repository.getTopArticles().collect { newArticles ->
-                if (newArticles.isNotEmpty()) {
-                    _articles.value = newArticles
-                }
-                _isLoading.value = false
-            }
-        }
+        fetchNews(null)
     }
 
     fun fetchNews(query: String? = null) {
-        viewModelScope.launch {
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
             _isLoading.value = true
-            repository.getTopArticles(query).collect { newArticles ->
-                if (newArticles.isNotEmpty()) {
-                    _articles.value = newArticles
-                }
+            currentPage = 1
+            canLoadMore = true
+            currentQuery = query
+            
+            repository.getTopArticles(query, page = currentPage).collect { newArticles ->
+                _articles.value = newArticles
                 _isLoading.value = false
                 if (!query.isNullOrBlank() && newArticles.isNotEmpty()) {
                     historyManager.saveSearch(query)
@@ -87,13 +87,47 @@ class NewsViewModel(
         }
     }
 
+    fun loadMoreNews() {
+        if (_isLoading.value || !canLoadMore) return
+
+        // We don't want to cancel the previous job here because it's still collecting the flow
+        // But we want to trigger a new network fetch for the next page.
+        // The repository handles both network fetch and DB emission.
+        
+        viewModelScope.launch {
+            _isLoading.value = true
+            val nextPage = currentPage + 1
+            
+            // We use .first() here because we just want to trigger the fetch 
+            // and get the next state, but we're already collecting the full list 
+            // from the fetchJob started in fetchNews.
+            
+            // Wait, fetchNews is still collecting. If I trigger another collect, 
+            // I'll have two subscribers to the same DB flow.
+            
+            // Let's change the Repository to separate Fetch from Flow.
+            // Or just allow multiple collects for now as long as we manage isLoading.
+            
+            repository.getTopArticles(currentQuery, page = nextPage).collect { newArticles ->
+                val prevCount = _articles.value.size
+                _articles.value = newArticles
+                _isLoading.value = false
+                currentPage = nextPage
+                
+                if (newArticles.size <= prevCount) {
+                    canLoadMore = false
+                }
+            }
+        }
+    }
+
     fun refreshNews() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            repository.getTopArticles().collect { newArticles ->
-                if (newArticles.isNotEmpty()) {
-                    _articles.value = newArticles
-                }
+            currentPage = 1
+            canLoadMore = true
+            repository.getTopArticles(currentQuery, page = currentPage).collect { newArticles ->
+                _articles.value = newArticles
                 _isRefreshing.value = false
             }
         }
