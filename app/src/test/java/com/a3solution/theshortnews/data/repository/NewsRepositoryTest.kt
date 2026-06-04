@@ -2,15 +2,17 @@ package com.a3solution.theshortnews.data.repository
 
 import app.cash.turbine.test
 import com.a3solution.theshortnews.data.api.NewsApiService
+import com.a3solution.theshortnews.data.local.ArticleDao
+import com.a3solution.theshortnews.data.local.ArticleEntity
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.data.model.Articles
 import com.a3solution.theshortnews.data.model.NewsResponse
-import io.mockk.coEvery
-import io.mockk.mockk
+import com.a3solution.theshortnews.utils.NetworkUtils
+import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -18,57 +20,60 @@ import org.junit.Test
 class NewsRepositoryTest {
 
     private val apiService = mockk<NewsApiService>()
+    private val articleDao = mockk<ArticleDao>(relaxed = true)
+    private val networkUtils = mockk<NetworkUtils>()
     private lateinit var repository: NewsRepository
 
     @Before
     fun setup() {
-        repository = NewsRepository(apiService)
+        repository = NewsRepository(apiService, articleDao, networkUtils)
     }
 
     @Test
-    fun `getTopArticles returns list of articles on success`() = runTest {
+    fun `getTopArticles emits from DB after refreshing from network when online`() = runTest {
         val mockArticles = listOf(
-            Article(uri = "1", title = "Title 1", body = "Body 1", image = null, source = null, date = null),
-            Article(uri = "2", title = "Title 2", body = "Body 2", image = null, source = null, date = null)
+            Article(uri = "1", title = "Title 1", body = "Body 1", image = null, source = com.a3solution.theshortnews.data.model.Source(null), date = null)
+        )
+        val mockEntities = listOf(
+            ArticleEntity(uri = "1", title = "Title 1", body = "Body 1", image = null, sourceTitle = null, date = null)
         )
         val mockResponse = NewsResponse(articles = Articles(results = mockArticles))
         
-        coEvery { 
-            apiService.getTopArticles(apiKey = any(), keyword = any()) 
-        } returns mockResponse
+        val dbFlow = kotlinx.coroutines.flow.MutableSharedFlow<List<ArticleEntity>>(replay = 1)
+
+        every { networkUtils.isNetworkAvailable() } returns true
+        coEvery { apiService.getTopArticles(apiKey = any(), keyword = any()) } returns mockResponse
+        every { articleDao.getAllArticles(any()) } returns dbFlow
+        
+        coEvery { articleDao.refreshArticles(any()) } coAnswers {
+            dbFlow.emit(mockEntities)
+        }
 
         repository.getTopArticles("test").test {
             assertEquals(mockArticles, awaitItem())
-            awaitComplete()
+            cancelAndIgnoreRemainingEvents()
         }
-    }
-
-    @Test
-    fun `getTopArticles returns empty list on api failure`() = runTest {
-        coEvery { 
-            apiService.getTopArticles(apiKey = any(), keyword = any()) 
-        } throws Exception("Network error")
-
-        repository.getTopArticles().test {
-            val result = awaitItem()
-            assertTrue(result.isEmpty())
-            awaitComplete()
-        }
-    }
-
-    @Test
-    fun `getTopArticles returns empty list when response results are null`() = runTest {
-        val mockResponse = NewsResponse(articles = Articles(results = null))
         
-        coEvery { 
-            apiService.getTopArticles(apiKey = any(), keyword = any()) 
-        } returns mockResponse
+        coVerify { articleDao.refreshArticles(any()) }
+    }
+
+    @Test
+    fun `getTopArticles emits from DB without network call when offline`() = runTest {
+        val mockEntities = listOf(
+            ArticleEntity(uri = "1", title = "Title 1", body = "Body 1", image = null, sourceTitle = null, date = null)
+        )
+        
+        every { networkUtils.isNetworkAvailable() } returns false
+        every { articleDao.getAllArticles(any()) } returns flowOf(mockEntities)
 
         repository.getTopArticles().test {
             val result = awaitItem()
-            assertTrue(result.isEmpty())
+            assertEquals(1, result.size)
+            assertEquals("Title 1", result[0].title)
             awaitComplete()
         }
+        
+        coVerify(exactly = 0) { apiService.getTopArticles(any(), any()) }
     }
 
     @Test

@@ -7,6 +7,8 @@ import com.a3solution.theshortnews.data.SearchHistoryManager
 import com.a3solution.theshortnews.data.api.NewsApiService
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.data.repository.NewsRepository
+import com.a3solution.theshortnews.data.local.AppDatabase
+import com.a3solution.theshortnews.utils.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,13 +20,10 @@ import retrofit2.converter.gson.GsonConverterFactory
  *
  * Manages the UI state for the list of articles, search history, and loading states.
  * It interacts with the [NewsRepository] to fetch data from the Event Registry API.
- *
- * @param application The application context, used for managing search history.
- * @param repository The repository to fetch news from. If null, a default instance is created.
  */
 class NewsViewModel(
     application: Application,
-    private val repository: NewsRepository = createDefaultRepository()
+    private val repository: NewsRepository = createDefaultRepository(application)
 ) : AndroidViewModel(application) {
     private val historyManager = SearchHistoryManager(application)
     private val _articles = MutableStateFlow<List<Article>>(emptyList())
@@ -48,13 +47,15 @@ class NewsViewModel(
     }
 
     companion object {
-        private fun createDefaultRepository(): NewsRepository {
+        private fun createDefaultRepository(application: Application): NewsRepository {
             val retrofit = Retrofit.Builder()
                 .baseUrl(NewsApiService.BASE_URL)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
             val apiService = retrofit.create(NewsApiService::class.java)
-            return NewsRepository(apiService)
+            val database = AppDatabase.getDatabase(application)
+            val networkUtils = NetworkUtils(application)
+            return NewsRepository(apiService, database.articleDao(), networkUtils)
         }
     }
 
