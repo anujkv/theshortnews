@@ -46,13 +46,11 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     private fun initialLoad() {
         viewModelScope.launch {
             _isLoading.value = true
-            _isRefreshing.value = true // Show both on initial load
             repository.getTopArticles().collect { newArticles ->
                 if (newArticles.isNotEmpty()) {
                     _articles.value = newArticles
                 }
                 _isLoading.value = false
-                _isRefreshing.value = false
             }
         }
     }
