@@ -21,6 +21,9 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory
 
@@ -36,8 +39,22 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
             .build()
         val apiService = retrofit.create(NewsApiService::class.java)
         repository = NewsRepository(apiService)
-        fetchNews()
+        initialLoad()
         loadHistory()
+    }
+
+    private fun initialLoad() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _isRefreshing.value = true // Show both on initial load
+            repository.getTopArticles().collect { newArticles ->
+                if (newArticles.isNotEmpty()) {
+                    _articles.value = newArticles
+                }
+                _isLoading.value = false
+                _isRefreshing.value = false
+            }
+        }
     }
 
     fun fetchNews(query: String? = null) {
@@ -52,6 +69,18 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                     historyManager.saveSearch(query)
                     loadHistory()
                 }
+            }
+        }
+    }
+
+    fun refreshNews() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            repository.getTopArticles().collect { newArticles ->
+                if (newArticles.isNotEmpty()) {
+                    _articles.value = newArticles
+                }
+                _isRefreshing.value = false
             }
         }
     }

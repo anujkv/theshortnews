@@ -37,7 +37,7 @@ fun NewsScreen(
 
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val isRefreshing by viewModel.isLoading.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     Scaffold(
         topBar = {
@@ -73,7 +73,7 @@ fun NewsScreen(
         Box(modifier = Modifier.padding(padding)) {
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
-                onRefresh = { viewModel.fetchNews() },
+                onRefresh = { viewModel.refreshNews() },
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (articles.isEmpty() && !isLoading) {
