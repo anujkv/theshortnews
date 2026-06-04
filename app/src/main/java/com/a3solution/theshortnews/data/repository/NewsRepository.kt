@@ -6,9 +6,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 class NewsRepository(private val apiService: NewsApiService) {
-    fun getTopArticles(): Flow<List<Article>> = flow {
+    fun getTopArticles(keyword: String? = null): Flow<List<Article>> = flow {
         try {
-            val response = apiService.getTopArticles(apiKey = NewsApiService.API_KEY)
+            val response = apiService.getTopArticles(
+                apiKey = NewsApiService.API_KEY,
+                keyword = keyword
+            )
             emit(response.articles?.results ?: emptyList())
         } catch (e: Exception) {
             emit(emptyList())

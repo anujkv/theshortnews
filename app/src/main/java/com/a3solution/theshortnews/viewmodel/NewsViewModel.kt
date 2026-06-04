@@ -1,7 +1,9 @@
 package com.a3solution.theshortnews.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.a3solution.theshortnews.data.SearchHistoryManager
 import com.a3solution.theshortnews.data.api.NewsApiService
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.data.repository.NewsRepository
@@ -11,12 +13,16 @@ import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-class NewsViewModel : ViewModel() {
+class NewsViewModel(application: Application) : AndroidViewModel(application) {
+    private val historyManager = SearchHistoryManager(application)
     private val _articles = MutableStateFlow<List<Article>>(emptyList())
     val articles: StateFlow<List<Article>> = _articles
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory: StateFlow<List<String>> = _searchHistory
 
     private val _selectedArticle = MutableStateFlow<Article?>(null)
     val selectedArticle: StateFlow<Article?> = _selectedArticle
@@ -31,16 +37,30 @@ class NewsViewModel : ViewModel() {
         val apiService = retrofit.create(NewsApiService::class.java)
         repository = NewsRepository(apiService)
         fetchNews()
+        loadHistory()
     }
 
-    fun fetchNews() {
+    fun fetchNews(query: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getTopArticles().collect {
+            repository.getTopArticles(query).collect {
                 _articles.value = it
                 _isLoading.value = false
+                if (!query.isNullOrBlank()) {
+                    historyManager.saveSearch(query)
+                    loadHistory()
+                }
             }
         }
+    }
+
+    private fun loadHistory() {
+        _searchHistory.value = historyManager.getHistory()
+    }
+
+    fun clearHistory() {
+        historyManager.clearHistory()
+        loadHistory()
     }
 
     fun selectArticle(article: Article) {

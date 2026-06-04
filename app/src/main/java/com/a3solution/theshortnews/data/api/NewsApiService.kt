@@ -15,7 +15,7 @@ interface NewsApiService {
         @Query("articlesSortBy") sortBy: String = "date",
         @Query("articlesSortByAsc") sortByAsc: Boolean = false,
         @Query("lang") lang: String = "eng",
-        @Query("keyword") keyword: String = "news"
+        @Query("keyword") keyword: String? = null
     ): NewsResponse
 
     @GET("article/getArticle")
