@@ -43,10 +43,12 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchNews(query: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getTopArticles(query).collect {
-                _articles.value = it
+            repository.getTopArticles(query).collect { newArticles ->
+                if (newArticles.isNotEmpty()) {
+                    _articles.value = newArticles
+                }
                 _isLoading.value = false
-                if (!query.isNullOrBlank()) {
+                if (!query.isNullOrBlank() && newArticles.isNotEmpty()) {
                     historyManager.saveSearch(query)
                     loadHistory()
                 }

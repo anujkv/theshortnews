@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ fun NewsScreen(
 
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val isRefreshing by viewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
@@ -68,22 +71,37 @@ fun NewsScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { viewModel.fetchNews() },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (articles.isEmpty() && !isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No articles found")
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(articles) { article ->
+                            NewsItem(article, onClick = { onArticleClick(article) })
+                        }
+                    }
+                }
+            }
+
             if (isLoading && articles.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(articles) { article ->
-                        NewsItem(article, onClick = { onArticleClick(article) })
-                    }
                 }
             }
 
