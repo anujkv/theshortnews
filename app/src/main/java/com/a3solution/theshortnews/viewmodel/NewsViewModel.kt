@@ -20,8 +20,12 @@ import retrofit2.converter.gson.GsonConverterFactory
  * It interacts with the [NewsRepository] to fetch data from the Event Registry API.
  *
  * @param application The application context, used for managing search history.
+ * @param repository The repository to fetch news from. If null, a default instance is created.
  */
-class NewsViewModel(application: Application) : AndroidViewModel(application) {
+class NewsViewModel(
+    application: Application,
+    private val repository: NewsRepository = createDefaultRepository()
+) : AndroidViewModel(application) {
     private val historyManager = SearchHistoryManager(application)
     private val _articles = MutableStateFlow<List<Article>>(emptyList())
     val articles: StateFlow<List<Article>> = _articles
@@ -38,17 +42,20 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedArticle = MutableStateFlow<Article?>(null)
     val selectedArticle: StateFlow<Article?> = _selectedArticle
 
-    private val repository: NewsRepository
-
     init {
-        val retrofit = Retrofit.Builder()
-            .baseUrl(NewsApiService.BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-        val apiService = retrofit.create(NewsApiService::class.java)
-        repository = NewsRepository(apiService)
         initialLoad()
         loadHistory()
+    }
+
+    companion object {
+        private fun createDefaultRepository(): NewsRepository {
+            val retrofit = Retrofit.Builder()
+                .baseUrl(NewsApiService.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+            val apiService = retrofit.create(NewsApiService::class.java)
+            return NewsRepository(apiService)
+        }
     }
 
     private fun initialLoad() {
