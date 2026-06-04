@@ -18,6 +18,9 @@ class NewsViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _selectedArticle = MutableStateFlow<Article?>(null)
+    val selectedArticle: StateFlow<Article?> = _selectedArticle
+
     private val repository: NewsRepository
 
     init {
@@ -36,6 +39,23 @@ class NewsViewModel : ViewModel() {
             repository.getTopArticles().collect {
                 _articles.value = it
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun selectArticle(article: Article) {
+        _selectedArticle.value = article
+        article.uri?.let { uri ->
+            fetchArticleDetails(uri)
+        }
+    }
+
+    private fun fetchArticleDetails(uri: String) {
+        viewModelScope.launch {
+            repository.getArticleDetails(uri).collect { detailedArticle ->
+                detailedArticle?.let {
+                    _selectedArticle.value = it
+                }
             }
         }
     }

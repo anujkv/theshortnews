@@ -1,5 +1,6 @@
 package com.a3solution.theshortnews.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +22,10 @@ import com.a3solution.theshortnews.viewmodel.NewsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewsScreen(viewModel: NewsViewModel = viewModel()) {
+fun NewsScreen(
+    viewModel: NewsViewModel = viewModel(),
+    onArticleClick: (Article) -> Unit
+) {
     val articles by viewModel.articles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
@@ -54,7 +58,7 @@ fun NewsScreen(viewModel: NewsViewModel = viewModel()) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(articles) { article ->
-                    NewsItem(article)
+                    NewsItem(article, onClick = { onArticleClick(article) })
                 }
             }
         }
@@ -62,9 +66,11 @@ fun NewsScreen(viewModel: NewsViewModel = viewModel()) {
 }
 
 @Composable
-fun NewsItem(article: Article) {
+fun NewsItem(article: Article, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {

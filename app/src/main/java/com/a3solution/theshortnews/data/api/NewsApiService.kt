@@ -18,6 +18,13 @@ interface NewsApiService {
         @Query("keyword") keyword: String = "news"
     ): NewsResponse
 
+    @GET("article/getArticle")
+    suspend fun getArticleDetails(
+        @Query("articleUri") articleUri: String,
+        @Query("apiKey") apiKey: String = API_KEY,
+        @Query("resultType") resultType: String = "info"
+    ): Map<String, Any>
+
     companion object {
         const val BASE_URL = "https://eventregistry.org/api/v1/"
         const val API_KEY = "18d26111-b84a-424f-b65c-63803d0fa802"
