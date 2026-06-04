@@ -27,6 +27,9 @@ import coil.request.ImageRequest
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.viewmodel.NewsViewModel
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsScreen(
@@ -40,6 +43,23 @@ fun NewsScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val listState = rememberLazyListState()
+
+    // Endless scrolling trigger
+    val shouldLoadMore = remember {
+        derivedStateOf {
+            val totalItemsCount = listState.layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            // Load more when we are 5 items away from the bottom
+            totalItemsCount > 0 && lastVisibleItemIndex >= totalItemsCount - 5
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore.value) {
+        if (shouldLoadMore.value) {
+            viewModel.loadMoreNews()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -87,12 +107,24 @@ fun NewsScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(articles) { article ->
                             NewsItem(article, onClick = { onArticleClick(article) })
+                        }
+                        
+                        if (isLoading && articles.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                }
+                            }
                         }
                     }
                 }
