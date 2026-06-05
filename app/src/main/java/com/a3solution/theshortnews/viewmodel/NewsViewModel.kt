@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 
 /**
  * ViewModel for the News screen.
@@ -22,7 +24,7 @@ import retrofit2.converter.gson.GsonConverterFactory
  * It interacts with the [NewsRepository] to fetch data from the Event Registry API.
  */
 class NewsViewModel(
-    application: Application
+    application: Application,
 ) : AndroidViewModel(application) {
     private val repository: NewsRepository = createDefaultRepository(application)
     private val historyManager = SearchHistoryManager(application)
@@ -53,8 +55,32 @@ class NewsViewModel(
 
     companion object {
         private fun createDefaultRepository(application: Application): NewsRepository {
+            val loggingInterceptor = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+
+            val apiKeyInterceptor = okhttp3.Interceptor { chain ->
+                val originalRequest = chain.request()
+                val originalUrl = originalRequest.url
+
+                val url = originalUrl.newBuilder()
+                    .addQueryParameter("apiKey", NewsApiService.API_KEY)
+                    .build()
+
+                val requestBuilder = originalRequest.newBuilder()
+                    .url(url)
+
+                chain.proceed(requestBuilder.build())
+            }
+
+            val okHttpClient = OkHttpClient.Builder()
+                .addInterceptor(loggingInterceptor)
+                .addInterceptor(apiKeyInterceptor)
+                .build()
+
             val retrofit = Retrofit.Builder()
                 .baseUrl(NewsApiService.BASE_URL)
+                .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
             val apiService = retrofit.create(NewsApiService::class.java)
@@ -90,24 +116,9 @@ class NewsViewModel(
     fun loadMoreNews() {
         if (_isLoading.value || !canLoadMore) return
 
-        // We don't want to cancel the previous job here because it's still collecting the flow
-        // But we want to trigger a new network fetch for the next page.
-        // The repository handles both network fetch and DB emission.
-        
         viewModelScope.launch {
             _isLoading.value = true
             val nextPage = currentPage + 1
-            
-            // We use .first() here because we just want to trigger the fetch 
-            // and get the next state, but we're already collecting the full list 
-            // from the fetchJob started in fetchNews.
-            
-            // Wait, fetchNews is still collecting. If I trigger another collect, 
-            // I'll have two subscribers to the same DB flow.
-            
-            // Let's change the Repository to separate Fetch from Flow.
-            // Or just allow multiple collects for now as long as we manage isLoading.
-            
             repository.getTopArticles(currentQuery, page = nextPage).collect { newArticles ->
                 val prevCount = _articles.value.size
                 _articles.value = newArticles
