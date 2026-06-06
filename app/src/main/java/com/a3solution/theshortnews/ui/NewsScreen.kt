@@ -26,6 +26,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.viewmodel.NewsViewModel
+import com.a3solution.theshortnews.ui.components.AppLogo
+import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -71,6 +73,14 @@ fun NewsScreen(
         }
     }
 
+    // Search debounce: Trigger search after 3 seconds of typing
+    LaunchedEffect(searchQuery) {
+        if (isSearchActive && searchQuery.isNotEmpty()) {
+            delay(3000L)
+            viewModel.fetchNews(searchQuery)
+        }
+    }
+
     Scaffold(
         topBar = {
             if (isSearchActive) {
@@ -79,16 +89,16 @@ fun NewsScreen(
                     onQueryChange = { searchQuery = it },
                     onSearch = {
                         viewModel.fetchNews(it)
-                        isSearchActive = false
                     },
                     onClose = {
                         isSearchActive = false
                         searchQuery = ""
+                        viewModel.fetchNews(null) // Reset to top news
                     }
                 )
             } else {
                 TopAppBar(
-                    title = { Text("The Short News") },
+                    title = { AppLogo() },
                     actions = {
                         IconButton(onClick = { isSearchActive = true }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
