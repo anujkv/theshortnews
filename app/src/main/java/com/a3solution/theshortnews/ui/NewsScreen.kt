@@ -27,6 +27,8 @@ import coil.request.ImageRequest
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.viewmodel.NewsViewModel
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 
@@ -34,11 +36,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 @Composable
 fun NewsScreen(
     viewModel: NewsViewModel = viewModel(),
+    useTwoPane: Boolean = false,
     onArticleClick: (Article) -> Unit
 ) {
     val articles by viewModel.articles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
+    val selectedArticle by viewModel.selectedArticle.collectAsState()
 
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -58,6 +62,12 @@ fun NewsScreen(
     LaunchedEffect(shouldLoadMore.value) {
         if (shouldLoadMore.value) {
             viewModel.loadMoreNews()
+        }
+    }
+
+    LaunchedEffect(articles, useTwoPane) {
+        if (useTwoPane && selectedArticle == null && articles.isNotEmpty()) {
+            viewModel.selectArticle(articles.first())
         }
     }
 
@@ -90,65 +100,85 @@ fun NewsScreen(
                     )
                 )
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = { viewModel.refreshNews() },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (articles.isEmpty() && !isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No articles found")
-                    }
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(articles) { article ->
-                            NewsItem(article, onClick = { onArticleClick(article) })
+        Row(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Box(modifier = Modifier.weight(if (useTwoPane) 0.4f else 1f)) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { viewModel.refreshNews() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (articles.isEmpty() && !isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No articles found")
                         }
-                        
-                        if (isLoading && articles.isNotEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(articles) { article ->
+                                NewsItem(
+                                    article = article,
+                                    onClick = { onArticleClick(article) },
+                                    isSelected = useTwoPane && article.uri == selectedArticle?.uri
+                                )
+                            }
+                            
+                            if (isLoading && articles.isNotEmpty()) {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            if (isLoading && articles.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                if (isLoading && articles.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                if (isSearchActive && searchQuery.isEmpty() && searchHistory.isNotEmpty()) {
+                    SearchHistoryPanel(
+                        history = searchHistory,
+                        onHistoryClick = {
+                            searchQuery = it
+                            viewModel.fetchNews(it)
+                            isSearchActive = false
+                        },
+                        onClearHistory = { viewModel.clearHistory() }
+                    )
                 }
             }
 
-            if (isSearchActive && searchQuery.isEmpty() && searchHistory.isNotEmpty()) {
-                SearchHistoryPanel(
-                    history = searchHistory,
-                    onHistoryClick = {
-                        searchQuery = it
-                        viewModel.fetchNews(it)
-                        isSearchActive = false
-                    },
-                    onClearHistory = { viewModel.clearHistory() }
-                )
+            if (useTwoPane) {
+                VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
+                    if (selectedArticle != null) {
+                        NewsDetailContent(article = selectedArticle!!)
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Select an article to read", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
             }
         }
     }
@@ -225,12 +255,20 @@ fun SearchHistoryPanel(
 }
 
 @Composable
-fun NewsItem(article: Article, onClick: () -> Unit) {
+fun NewsItem(
+    article: Article,
+    onClick: () -> Unit,
+    isSelected: Boolean = false
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = if (isSelected) CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)) else null
     ) {
         Column {
             article.image?.let { imageUrl ->
@@ -283,3 +321,62 @@ fun NewsItem(article: Article, onClick: () -> Unit) {
         }
     }
 }
+
+@Composable
+fun NewsDetailContent(article: Article) {
+    val scrollState = rememberScrollState()
+    
+    // Reset scroll position to top whenever the article changes
+    LaunchedEffect(article.uri) {
+        scrollState.scrollTo(0)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+    ) {
+        article.image?.let { imageUrl ->
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                contentScale = ContentScale.Crop
+            )
+        }
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = article.title ?: "No Title",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = article.source?.title ?: "Unknown Source",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = article.date ?: "",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = article.body ?: "No Content",
+                style = MaterialTheme.typography.bodyLarge,
+                lineHeight = 28.sp
+            )
+        }
+    }
+}
+
