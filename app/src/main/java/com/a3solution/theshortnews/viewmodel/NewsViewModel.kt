@@ -1,6 +1,7 @@
 package com.a3solution.theshortnews.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.a3solution.theshortnews.data.SearchHistoryManager
@@ -54,7 +55,7 @@ class NewsViewModel @JvmOverloads constructor(
     }
 
     companion object {
-        fun createDefaultRepository(application: Application): NewsRepository {
+        fun createDefaultRepository(context: Context): NewsRepository {
             val loggingInterceptor = HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             }
@@ -84,8 +85,8 @@ class NewsViewModel @JvmOverloads constructor(
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
             val apiService = retrofit.create(NewsApiService::class.java)
-            val database = AppDatabase.getDatabase(application)
-            val networkUtils = NetworkUtils(application)
+            val database = AppDatabase.getDatabase(context)
+            val networkUtils = NetworkUtils(context)
             return NewsRepository(apiService, database.articleDao(), networkUtils)
         }
     }

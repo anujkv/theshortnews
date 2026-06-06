@@ -9,12 +9,14 @@ An Android application that provides the latest news articles in a concise and e
 - **Search History**: Quickly access your recent searches.
 - **Pull-to-Refresh**: Easily refresh the news feed to get the latest updates.
 - **Article Details**: View summaries and full content of news stories.
+- **Background Sync**: Periodic background updates to keep news fresh using WorkManager.
 - **Optimized Image Loading**: Smooth and efficient image loading with advanced caching.
 - **Google Fonts Integration**: Uses custom typography (Poppins) via Downloadable Fonts.
 
 ## Tech Stack
 
 - **UI**: [Jetpack Compose](https://developer.android.com/jetpack/compose) - Modern declarative UI toolkit.
+- **Background Work**: [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) - Robust background task scheduling.
 - **Design System**: [Material Design 3](https://m3.material.io/) - Latest version of Google's design language.
 - **Architecture**: MVVM (Model-View-ViewModel) - Clean separation of concerns.
 - **Networking**: [Retrofit](https://square.github.io/retrofit/), [OkHttp](https://square.github.io/okhttp/) & [Gson](https://github.com/google/gson) - Type-safe HTTP client, interceptors, and JSON parsing.
@@ -29,7 +31,8 @@ The project follows the recommended Android Architecture components (MVVM):
 
 - **UI Layer**: Composable functions (`NewsScreen`, `AppNavigation`) that observe state from ViewModels.
 - **ViewModel Layer**: `NewsViewModel` manages the UI state and interacts with the Repository.
-- **Repository Layer**: `NewsRepository` abstracts the data source (API) and manages search history.
+- **Worker Layer**: `SyncWorker` handles periodic background data synchronization using WorkManager.
+- **Repository Layer**: `NewsRepository` abstracts data sources and manages news data.
 - **Data Layer**: `NewsApiService` handles network requests using Retrofit, supported by OkHttp interceptors for authentication and logging.
 
 ## Networking & API Configuration

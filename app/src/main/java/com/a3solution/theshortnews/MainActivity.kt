@@ -4,9 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.a3solution.theshortnews.ui.AppNavigation
-import com.a3solution.theshortnews.ui.theme.TheShortNewsTheme
-
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,12 +31,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import com.a3solution.theshortnews.data.worker.SyncWorker
 import com.a3solution.theshortnews.ui.AppNavigation
 import com.a3solution.theshortnews.ui.theme.TheShortNewsTheme
 import com.a3solution.theshortnews.utils.NetworkUtils
@@ -101,6 +98,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        SyncWorker.startWork(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        SyncWorker.stopWork(this)
+    }
 }
 
 @Composable
@@ -138,6 +145,3 @@ fun ConnectivitySnackbar(
         }
     }
 }
-
-
-
