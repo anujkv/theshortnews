@@ -23,10 +23,10 @@ import okhttp3.logging.HttpLoggingInterceptor
  * Manages the UI state for the list of articles, search history, and loading states.
  * It interacts with the [NewsRepository] to fetch data from the Event Registry API.
  */
-class NewsViewModel(
+class NewsViewModel @JvmOverloads constructor(
     application: Application,
-) : AndroidViewModel(application) {
     private val repository: NewsRepository = createDefaultRepository(application)
+) : AndroidViewModel(application) {
     private val historyManager = SearchHistoryManager(application)
     private val _articles = MutableStateFlow<List<Article>>(emptyList())
     val articles: StateFlow<List<Article>> = _articles
@@ -54,7 +54,7 @@ class NewsViewModel(
     }
 
     companion object {
-        private fun createDefaultRepository(application: Application): NewsRepository {
+        fun createDefaultRepository(application: Application): NewsRepository {
             val loggingInterceptor = HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             }

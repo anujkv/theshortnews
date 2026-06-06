@@ -42,7 +42,7 @@ class NewsRepositoryTest {
         val dbFlow = kotlinx.coroutines.flow.MutableSharedFlow<List<ArticleEntity>>(replay = 1)
 
         every { networkUtils.isNetworkAvailable() } returns true
-        coEvery { apiService.getTopArticles(apiKey = any(), keyword = any()) } returns mockResponse
+        coEvery { apiService.getTopArticles(keyword = any(), page = any()) } returns mockResponse
         every { articleDao.getAllArticles(any()) } returns dbFlow
         
         coEvery { articleDao.refreshArticles(any()) } coAnswers {
@@ -73,7 +73,7 @@ class NewsRepositoryTest {
             awaitComplete()
         }
         
-        coVerify(exactly = 0) { apiService.getTopArticles(any(), any()) }
+        coVerify(exactly = 0) { apiService.getTopArticles(keyword = any(), page = any()) }
     }
 
     @Test
