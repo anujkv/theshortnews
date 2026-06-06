@@ -26,7 +26,6 @@ class NewsRepository(
         if (networkUtils.isNetworkAvailable()) {
             try {
                 val response = apiService.getTopArticles(
-                    apiKey = NewsApiService.API_KEY,
                     keyword = keyword,
                     page = page
                 )
