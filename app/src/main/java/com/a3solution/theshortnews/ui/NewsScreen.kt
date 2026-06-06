@@ -26,6 +26,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.a3solution.theshortnews.data.model.Article
 import com.a3solution.theshortnews.viewmodel.NewsViewModel
+import com.a3solution.theshortnews.ui.components.AppLogo
 import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.rememberScrollState
@@ -97,7 +98,7 @@ fun NewsScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("The Short News") },
+                    title = { AppLogo() },
                     actions = {
                         IconButton(onClick = { isSearchActive = true }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
