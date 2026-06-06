@@ -10,6 +10,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.a3solution.theshortnews.viewmodel.NewsViewModel
 
+import androidx.compose.ui.Modifier
+
 sealed class Screen(val route: String) {
     object NewsList : Screen("news_list")
     object NewsDetail : Screen("news_detail")
@@ -17,19 +19,25 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun AppNavigation(
+    modifier: Modifier = Modifier,
+    useTwoPane: Boolean = false,
     navController: NavHostController = rememberNavController(),
     viewModel: NewsViewModel = viewModel()
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.NewsList.route
+        startDestination = Screen.NewsList.route,
+        modifier = modifier
     ) {
         composable(Screen.NewsList.route) {
             NewsScreen(
                 viewModel = viewModel,
+                useTwoPane = useTwoPane,
                 onArticleClick = { article ->
                     viewModel.selectArticle(article)
-                    navController.navigate(Screen.NewsDetail.route)
+                    if (!useTwoPane) {
+                        navController.navigate(Screen.NewsDetail.route)
+                    }
                 }
             )
         }
@@ -44,3 +52,4 @@ fun AppNavigation(
         }
     }
 }
+
